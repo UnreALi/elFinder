@@ -2112,7 +2112,14 @@ abstract class elFinderVolumeDriver {
 		$res = false;
 		if ($path = $this->convEncOut($this->_mkfile($this->convEncIn($path), $this->convEncIn($name)))) {
 			$this->clearstatcache();
+			/*
 			$res = $this->stat($path);
+			*/
+			// yeni oluşturulan dosyalar içindir. (editörden kaydedilenlenler dahil.)
+            // urle parametresi eklendi. (copy ile yapılan mantık.)
+            $stat = $this->stat($path);
+            $stat['url'] = $path;
+            $res = $stat;
 		}
 		return $res;
 	}
@@ -2201,9 +2208,10 @@ abstract class elFinderVolumeDriver {
 			return $this->setError(elFinder::ERROR_PERM_DENIED);
 		}
 
-		return ($path = $this->copy($path, $dir, $name)) == false
-			? false
-			: $this->stat($path);
+        return ($path = $this->copy($path, $dir, $name)) == false
+            ? false
+            : $this->stat($path);
+
 	}
 
 	/**
@@ -3544,7 +3552,7 @@ abstract class elFinderVolumeDriver {
 	 * @author Dmitry (dio) Levashov
 	 * @author Troex Nevelin
 	 **/
-	protected function decode($hash) {
+	public function decode($hash) {
 		if (strpos($hash, $this->id) === 0) {
 			// cut volume id after it was prepended in encode
 			$h = substr($hash, strlen($this->id));
@@ -4733,7 +4741,7 @@ abstract class elFinderVolumeDriver {
 		elFinder::checkAborted();
 		
 		$srcStat = $this->stat($src);
-		
+
 		if (!empty($srcStat['thash'])) {
 			$target = $this->decode($srcStat['thash']);
 			if (!$this->inpathCE($target, $this->root)) {
@@ -4755,21 +4763,22 @@ abstract class elFinderVolumeDriver {
 			}
 			
 			$dst = $this->decode($testStat['hash']);
-			
-			foreach ($this->getScandir($src) as $stat) {
-				if (empty($stat['hidden'])) {
-					$name = $stat['name'];
-					$_src = $this->decode($stat['hash']);
-					if (! $this->copy($_src, $dst, $name)) {
-						$this->remove($dst, true); // fall back
-						return $this->setError($this->error, elFinder::ERROR_COPY, $this->_path($src));
-					}
-				}
-			}
-			
-			$this->added[] = $testStat;
-			
-			return $dst;
+
+
+            foreach ($this->getScandir($src) as $stat) {
+                if (empty($stat['hidden'])) {
+                    $name = $stat['name'];
+                    $_src = $this->decode($stat['hash']);
+                    if (! $this->copy($_src, $dst, $name)) {
+                        $this->remove($dst, true); // fall back
+                        return $this->setError($this->error, elFinder::ERROR_COPY, $this->_path($src));
+                    }
+                }
+            }
+
+            $this->added[] = $testStat;
+
+            return $dst;
 		}
 
 		if ($this->options['copyJoin']) {
@@ -4783,9 +4792,15 @@ abstract class elFinderVolumeDriver {
 		if ($res = $this->convEncOut($this->_copy($this->convEncIn($src), $this->convEncIn($dst), $this->convEncIn($name)))) {
 			$path = is_string($res)? $res : $this->joinPathCE($dst, $name);
 			$this->clearstatcache();
-			if ($this->ARGS['cmd'] !== 'duplicate') {
-				$this->added[] = $this->stat($path);
-			}
+			// sınıf duplicate işlemlerinde kopyalalan
+            //ögeleri added arrayina dahil etmmemiş biz ettik.
+			if ($this->ARGS['cmd'] == 'duplicate') {
+                $stat = $this->stat($path);
+                $stat['url'] = $path;
+				$this->added[] = $stat;
+			}else{
+                $this->added[] = $this->stat($path);
+            }
 			return $path;
 		}
 

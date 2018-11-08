@@ -1014,7 +1014,12 @@ class elFinder {
 		$args['sessionCloseEarlier'] = isset($this->sessionUseCmds[$cmd])? false : $this->sessionCloseEarlier;
 		if (!empty($this->listeners[$cmd.'.pre'])) {
 			foreach ($this->listeners[$cmd.'.pre'] as $handler) {
-				$_res = call_user_func_array($handler, array($cmd, &$args, $this, $dstVolume));
+			    // oluşturulan bind fonksitonlarının çagrıldığı yer
+
+                // bind fonksiyonlarına $volume sınıfıda gönderilerek bu sınıfın fonksiyonalarınıda kullanıma açılması amaçlandı.
+                //$volume = elFinderVolumeDrive.class.php
+                // sınıfın fonksiyonaları protected olarak yazılmış kullanılmak istenen fonksiyonlar public yapılmalı.
+				$_res = call_user_func_array($handler, array($cmd, &$args, $this, $dstVolume, $volume));
 				if (is_array($_res)) {
 					if (! empty($_res['preventexec'])) {
 						$result = array('error' => true);
@@ -2132,10 +2137,14 @@ class elFinder {
 		$targets = is_array($args['targets']) ? $args['targets'] : array();
 		$result  = array('added' => array());
 		$suffix  = empty($args['suffix']) ? 'copy' : $args['suffix'];
-		
+
+//        var_dump('elfinder');
+//        var_dump($suffix);
+//        var_dump('elfinder');
+
 		$this->itemLock($targets);
-		
-		foreach ($targets as $target) {
+
+        foreach ($targets as $target) {
 			elFinder::checkAborted();
 			
 			if (($volume = $this->volume($target)) == false
@@ -2148,8 +2157,7 @@ class elFinder {
 				$result['warning'] = $this->error($volume->error());
 				break;
 			}
-			
-			$result['added'][] = $file;
+            $result['added'][] = $file;
 		}
 		
 		return $result;
